@@ -26,13 +26,13 @@ require_bin() {
 }
 
 # ======= Test selection =======
-RUN_GPU=1
-RUN_CPU=1
-RUN_MEM=1
-RUN_DISK=1
+RUN_GPU=0
+RUN_CPU=0
+RUN_MEM=0
+RUN_DISK=0
 
 RUN_FIELDIAG_L1=0
-RUN_FIELDIAG_L2=1   # 默认 level2
+RUN_FIELDIAG_L2=0
 
 select_tests() {
 
@@ -40,12 +40,12 @@ if [ -t 1 ] && command -v dialog >/dev/null 2>&1; then
 
 choices=$(dialog --clear --title "Burn-in Tests" --checklist \
 "Select tests to run (SPACE toggle, ENTER confirm)" 20 78 10 \
-"GPU" "gpu_burn" on \
-"FIELDIAG_L1" "field diagnostics level1" off \
-"FIELDIAG_L2" "field diagnostics level2" on \
-"CPU" "stress-ng cpu" on \
-"MEM" "stress-ng mem" on \
-"DISK" "fio randrw" on \
+"GPU" "gpu_burn" OFF \
+"FIELDIAG_L1" "fieldiag --level1 --no_bmc" OFF \
+"FIELDIAG_L2" "fieldiag --level2 --no_bmc" OFF \
+"CPU" "stress-ng cpu" OFF \
+"MEM" "stress-ng mem" OFF \
+"DISK" "fio randrw" OFF \
 3>&1 1>&2 2>&3)
 
 exit_status=$?
@@ -73,12 +73,12 @@ elif [ -t 1 ] && command -v whiptail >/dev/null 2>&1; then
 
 choices=$(whiptail --title "Burn-in Tests" --checklist \
 "Select tests to run (SPACE toggle, ENTER confirm)" 20 78 10 \
-"GPU" "gpu_burn" ON \
-"FIELDIAG_L1" "field diagnostics level1" OFF \
-"FIELDIAG_L2" "field diagnostics level2" ON \
-"CPU" "stress-ng cpu" ON \
-"MEM" "stress-ng mem" ON \
-"DISK" "fio randrw" ON \
+"GPU" "gpu_burn -tc" off \
+"FIELDIAG_L1" "fieldiag --level1 --no_bmc" off \
+"FIELDIAG_L2" "fieldiag --level2 --no_bmc" off \
+"CPU" "stress-ng cpu" off \
+"MEM" "stress-ng mem" off \
+"DISK" "fio randrw" off \
 3>&1 1>&2 2>&3)
 
 exit_status=$?
@@ -292,4 +292,5 @@ fi
 
 log "All tests completed."
 log "Logs stored in: $log_dir"
+
 
