@@ -264,30 +264,57 @@ fi
 
 if [ $RUN_DISK -eq 1 ]; then
 
-log "Running disk test with fio for ${DISK_TEST_SECS}s"
+log "Detecting NVMe devices..."
 
-fio_cmd=(
-"$FIO_BIN"
---rw=randrw
---rwmixread=70
---bs=4k
---ioengine=libaio
---direct=1
---numjobs=1
---iodepth=32
---time_based
---runtime="$DISK_TEST_SECS"
---group_reporting
-)
+# 自动检测所有 PCIe NVMe 磁盘
+NVME_DEVS=$(lsblk -d -n -o NAME,TYPE | awk '$2=="disk" && $1 ~ /^nvme/ {print "/dev/"$1}')
 
-idx=0
-for dev in $NVME_DEVS; do
-fio_cmd+=(--name="nvme${idx}" --filename="$dev")
-idx=$((idx+1))
-done
+if [ -z "$NVME_DEVS" ]; then
+    log "WARN: No NVMe devices detected. Skipping disk test."
+else
+    log "NVMe devices detected:"
+    for dev in $NVME_DEVS; do
+        log "  $dev"
+    done
 
-"${fio_cmd[@]}" 2>&1 | tee "$log_dir/disk_fio.log"
+    log "Running fio disk test for ${DISK_TEST_SECS}s"
 
+    # AI 服务器推荐参数（高负载）
+    fio_cmd=(
+        "$FIO_BIN"
+        --rw=randrw           # 随机读写
+        --rwmixread=70        # 70% 读
+        --bs=4k               # 4KB 块大小
+        --ioengine=libaio     # 异步 IO
+        --direct=1            # 绕过操作系统缓存
+        --thread              # 使用线程模式
+        --numjobs=4           # 每个设备 4 个线程 job
+        --iodepth=64          # 队列深度 64
+        --randrepeat=0        # 每次随机不同
+        --invalidate=1        # 清空缓存影响
+        --norandommap         # 减少内存占用
+        --time_based
+        --runtime="$DISK_TEST_SECS"
+        --group_reporting
+    )
+
+    idx=0
+    for dev in $NVME_DEVS; do
+        if [ ! -b "$dev" ]; then
+            log "WARN: device not found or invalid: $dev, skipping..."
+            continue
+        fi
+        fio_cmd+=(--name="nvme${idx}" --filename="$dev")
+        idx=$((idx+1))
+    done
+
+    if [ "$idx" -eq 0 ]; then
+        log "ERROR: No valid NVMe devices available for testing."
+    else
+        "${fio_cmd[@]}" 2>&1 | tee "$log_dir/disk_fio.log"
+    fi
+
+fi
 fi
 
 log "All tests completed."
