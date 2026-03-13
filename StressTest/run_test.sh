@@ -247,20 +247,20 @@ if [ $RUN_DISK -eq 1 ]; then
 
         fio_cmd=(
             "$FIO_BIN"
-            --rw=randrw
-            --rwmixread=70
-            --bs=4k
-            --ioengine=libaio
-            --direct=1
-            --thread
-            --numjobs=4
-            --iodepth=64
-            --randrepeat=0
-            --invalidate=1
-            --norandommap
-            --time_based
-            --runtime="$DISK_TEST_SECS"
-            --group_reporting
+	    --rw=randrw           # 随机读写
+            --rwmixread=70        # 70% 读
+	    --bs=4k               # 4KB 块大小
+	    --ioengine=libaio     # 异步 IO
+	    --direct=1            # 绕过操作系统缓存
+	    --thread              # 使用线程模式
+	    --numjobs=4           # 每个设备 4 个线程 job
+	    --iodepth=64          # 队列深度 64
+	    --randrepeat=0        # 每次随机不同
+	    --invalidate=1        # 清空缓存影响
+	    --norandommap         # 减少内存占用
+	    --time_based
+	    --runtime="$DISK_TEST_SECS"
+	    --group_reporting
         )
 
         idx=0
