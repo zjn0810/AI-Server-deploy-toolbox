@@ -40,7 +40,7 @@ select_tests() {
     if [ -t 1 ] && command -v dialog >/dev/null 2>&1; then
         choices=$(dialog --clear --title "Burn-in Tests" --checklist \
         "Select tests to run (SPACE toggle, ENTER confirm)" 20 78 10 \
-        "GPU" "gpu_burn" OFF \
+        "GPU BURN" "gpu_burn" OFF \
         "FIELDIAG_L1" "fieldiag --level1 --no_bmc" OFF \
         "FIELDIAG_L2" "fieldiag --level2 --no_bmc" OFF \
         "CPU" "stress-ng cpu" OFF \
@@ -72,7 +72,7 @@ select_tests() {
     elif [ -t 1 ] && command -v whiptail >/dev/null 2>&1; then
         choices=$(whiptail --title "Burn-in Tests" --checklist \
         "Select tests to run (SPACE toggle, ENTER confirm)" 20 78 10 \
-        "GPU" "gpu_burn -tc" off \
+        "GPU BURN" "gpu_burn -tc" off \
         "FIELDIAG_L1" "fieldiag --level1 --no_bmc" off \
         "FIELDIAG_L2" "fieldiag --level2 --no_bmc" off \
         "CPU" "stress-ng cpu" off \
@@ -95,7 +95,7 @@ select_tests() {
 
         for item in $choices; do
             case "$item" in
-                "\"GPU\"") RUN_GPU=1 ;;
+                "\"GPU BURN\"") RUN_GPU=1 ;;
                 "\"FIELDIAG_L1\"") RUN_FIELDIAG_L1=1 ;;
                 "\"FIELDIAG_L2\"") RUN_FIELDIAG_L2=1 ;;
                 "\"CPU\"") RUN_CPU=1 ;;
@@ -247,20 +247,20 @@ if [ $RUN_DISK -eq 1 ]; then
 
         fio_cmd=(
             "$FIO_BIN"
-	    --rw=randrw           # 随机读写
-            --rwmixread=70        # 70% 读
-	    --bs=4k               # 4KB 块大小
-	    --ioengine=libaio     # 异步 IO
-	    --direct=1            # 绕过操作系统缓存
-	    --thread              # 使用线程模式
-	    --numjobs=4           # 每个设备 4 个线程 job
-	    --iodepth=64          # 队列深度 64
-	    --randrepeat=0        # 每次随机不同
-	    --invalidate=1        # 清空缓存影响
-	    --norandommap         # 减少内存占用
-	    --time_based
-	    --runtime="$DISK_TEST_SECS"
-	    --group_reporting
+            --rw=randrw           # 随机读写
+			--rwmixread=70        # 70% 读
+			--bs=4k               # 4KB 块大小
+			--ioengine=libaio     # 异步 IO
+			--direct=1            # 绕过操作系统缓存
+			--thread              # 使用线程模式
+			--numjobs=4           # 每个设备 4 个线程 job
+			--iodepth=64          # 队列深度 64
+			--randrepeat=0        # 每次随机不同
+			--invalidate=1        # 清空缓存影响
+			--norandommap         # 减少内存占用
+			--time_based
+			--runtime="$DISK_TEST_SECS"
+			--group_reporting
         )
 
         idx=0
@@ -283,3 +283,4 @@ fi
 
 log "All tests completed."
 log "Logs stored in: $log_dir"
+
