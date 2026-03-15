@@ -252,7 +252,7 @@ if [ $RUN_DISK -eq 1 ]; then
 			--ioengine=io_uring   
 			--direct=1            # 绕过操作系统缓存
 			--thread              # 使用线程模式
-			--numjobs=8           # 每个设备 4 个线程 job
+			--numjobs=8           # 每个设备 8 个线程 job
 			--iodepth=128          # 队列深度 64
 			--randrepeat=0        # 每次随机不同
 			--invalidate=1        # 清空缓存影响
