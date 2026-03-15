@@ -246,20 +246,51 @@ if [ $RUN_DISK -eq 1 ]; then
 
         fio_cmd=(
             "$FIO_BIN"
-            --rw=randrw           # 随机读写
-			--rwmixread=70        # 70% 读
-			--bs=4k               # 4KB 块大小
-			--ioengine=io_uring   
-			--direct=1            # 绕过操作系统缓存
-			--thread              # 使用线程模式
-			--numjobs=8           # 每个设备 8 个线程 job
-			--iodepth=128          # 队列深度 64
-			--randrepeat=0        # 每次随机不同
-			--invalidate=1        # 清空缓存影响
-			--norandommap         # 减少内存占用
-			--time_based
-			--runtime="$DISK_TEST_SECS"
-			--group_reporting
+            --rw=randrw           # I/O 模式：随机读写混合 (random read/write)，模拟真实业务负载
+            --rwmixread=70        # 读写比例：70% 读 / 30% 写（很多数据库、AI推理场景接近这种比例）
+
+            --bs=4k               # I/O 块大小：4KB
+                                  # 这是最常见的小块随机IO尺寸，用于测试IOPS能力
+			
+			--size=100%			  #覆盖整个盘空间,防止只测到一小部分 NAND
+
+            --ioengine=io_uring   # IO引擎：Linux 新一代异步IO接口 io_uring
+                                  # 相比 libaio：
+                                  # 1. 延迟更低
+                                  # 2. 并发能力更强
+                                  # 3. 新内核 NVMe 推荐使用
+
+            --direct=1            # Direct I/O：绕过操作系统 Page Cache
+                                  # 保证测试的是“硬盘真实性能”，而不是内存缓存
+
+            --thread              # 使用线程模式而不是进程模式
+                                  # 在高并发IO测试时线程开销更小
+
+            --numjobs=8           # 每个设备启动 8 个并发 job
+                                  # 相当于 8 个 worker 同时向设备发起IO
+
+            --iodepth=128         # IO 队列深度
+                                  # 表示每个 job 同时挂起 128 个 IO 请求
+                                  # NVMe 通常需要较高队列深度才能跑满性能
+
+            --randrepeat=0        # 每次运行生成不同的随机序列
+                                  # 避免测试结果被缓存或模式化影响
+
+            --invalidate=1        # 在测试开始前清空设备缓存
+                                  # 防止历史数据影响测试结果
+
+            --norandommap         # 不记录随机块映射表
+                                  # 可以减少 fio 内存占用
+                                  # 在大容量 NVMe 测试时非常有用
+
+            --time_based          # 使用时间模式运行测试
+                                  # 而不是执行固定IO数量
+
+            --runtime="$DISK_TEST_SECS"   # 测试运行时长（秒）
+                                          # 由脚本变量控制
+
+            --group_reporting     # 汇总所有 job 的统计信息
+                                  # 输出总 IOPS / 总带宽 / 总延迟
         )
 
         idx=0
