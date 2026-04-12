@@ -15,7 +15,16 @@ fi
 # ======= Helpers =======
 now_ts() { date '+%Y%m%d_%H%M%S'; }
 
-log_dir="$LOG_ROOT/run_$(now_ts)"
+SN=$(cat /sys/class/dmi/id/product_serial 2>/dev/null)
+if [[ -z "$SN" ]]; then
+        SN=$(dmidecode -s system-serial-number 2>/dev/null)
+fi
+
+SN=${SN:-UNKNOWN}
+SN=${SN// /_}
+
+
+log_dir="$LOG_ROOT/stress_${SN}_$(now_ts)"
 mkdir -p "$log_dir"
 
 log() { echo "[$(date '+%F %T')] $*" | tee -a "$log_dir/run.log"; }
@@ -175,7 +184,7 @@ fi
 # ======= GPU burn ============================================================================
 log "Running gpu_burn for ${GPU_BURN_SECS}s"
 
-MONITOR_SCRIPT="/opt/AI-Server-deploy-toolbox/monitor/slowdown.sh"
+MONITOR_SCRIPT="/opt/AI-Server-deploy-toolbox/StressTest/monitor/slowdown.sh"
 
 # ===== 启动监控（提前10分钟结束）=====
 MONITOR_SECS=$((GPU_BURN_SECS * 19 / 20))
