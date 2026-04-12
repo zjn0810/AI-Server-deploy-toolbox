@@ -184,7 +184,7 @@ fi
 # ======= GPU burn ============================================================================
 log "Running gpu_burn for ${GPU_BURN_SECS}s"
 
-MONITOR_SCRIPT="/opt/AI-Server-deploy-toolbox/StressTest/monitor/slowdown.sh"
+MONITOR_SCRIPT="$SCRIPT_DIR/monitor/slowdown.sh"
 
 # ===== 启动监控（提前10分钟结束）=====
 MONITOR_SECS=$((GPU_BURN_SECS * 19 / 20))
@@ -215,6 +215,8 @@ log "gpu_burn PID: $GPU_BURN_PID"
 # ===== 等待 gpu_burn =====
 wait $GPU_BURN_PID
 GPU_BURN_RC=$?
+
+trap 'kill $MONITOR_PID 2>/dev/null' EXIT
 
 log "gpu_burn finished with code: $GPU_BURN_RC"
 
