@@ -195,7 +195,7 @@ fi
 log "Starting GPU monitor for ${MONITOR_SECS}s"
 
 # 启动监控（后台）
-bash "$MONITOR_SCRIPT" "$MONITOR_SECS" > "$log_dir/monitor.log" 2>&1 &
+bash "$MONITOR_SCRIPT" "$MONITOR_SECS" &
 MONITOR_PID=$!
 
 log "Monitor PID: $MONITOR_PID"
