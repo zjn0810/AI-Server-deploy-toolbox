@@ -26,6 +26,9 @@ SN=${SN// /_}
 LOG_DIR="logs/slow_${SN}_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$LOG_DIR"
 
+ALL_LOG="${LOG_DIR}/slow.log"
+ACTIVE_LOG="${LOG_DIR}/active.log"
+
 START_TIME=$(date +%s)
 
 # =========================
