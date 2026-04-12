@@ -172,19 +172,57 @@ if { [ $RUN_FIELDIAG_L1 -eq 1 ] || [ $RUN_FIELDIAG_L2 -eq 1 ]; } && \
     FIELDIAG_BIN=""
 fi
 
-# ======= GPU burn =======
-if [ $RUN_GPU -eq 1 ]; then
-    log "Running gpu_burn for ${GPU_BURN_SECS}s"
-    if [ -n "$GPU_BURN_DIR" ]; then
-        ( cd "$GPU_BURN_DIR" && "$GPU_BURN_BIN" -tc "$GPU_BURN_SECS" ) \
-        2>&1 | tee "$log_dir/gpu_burn.log"
-    else
-        "$GPU_BURN_BIN" -tc "$GPU_BURN_SECS" \
-        2>&1 | tee "$log_dir/gpu_burn.log"
-    fi
+# ======= GPU burn ============================================================================
+log "Running gpu_burn for ${GPU_BURN_SECS}s"
+
+MONITOR_SCRIPT="/opt/AI-Server-deploy-toolbox/monitor/slowdown.sh"
+
+# ===== 启动监控（提前10分钟结束）=====
+MONITOR_SECS=$((GPU_BURN_SECS * 19 / 20))
+if (( MONITOR_SECS < 0 )); then
+    MONITOR_SECS=$GPU_BURN_SECS
 fi
 
-# ======= Field diagnostics =======
+log "Starting GPU monitor for ${MONITOR_SECS}s"
+
+# 启动监控（后台）
+bash "$MONITOR_SCRIPT" "$MONITOR_SECS" > "$log_dir/monitor.log" 2>&1 &
+MONITOR_PID=$!
+
+log "Monitor PID: $MONITOR_PID"
+
+# ===== 启动 gpu_burn =====
+if [ -n "$GPU_BURN_DIR" ]; then
+    ( cd "$GPU_BURN_DIR" && "$GPU_BURN_BIN" -tc "$GPU_BURN_SECS" ) \
+    2>&1 | tee "$log_dir/gpu_burn.log" &
+else
+    "$GPU_BURN_BIN" -tc "$GPU_BURN_SECS" \
+    2>&1 | tee "$log_dir/gpu_burn.log" &
+fi
+
+GPU_BURN_PID=$!
+log "gpu_burn PID: $GPU_BURN_PID"
+
+# ===== 等待 gpu_burn =====
+wait $GPU_BURN_PID
+GPU_BURN_RC=$?
+
+log "gpu_burn finished with code: $GPU_BURN_RC"
+
+# ===== 关键：停止监控 =====
+if ps -p $MONITOR_PID >/dev/null 2>&1; then
+    log "Stopping monitor (PID $MONITOR_PID)..."
+    kill $MONITOR_PID
+    wait $MONITOR_PID 2>/dev/null
+fi
+
+# ===== 判断结果 =====
+if [ $GPU_BURN_RC -ne 0 ]; then
+    log "ERROR: gpu_burn failed!"
+else
+    log "gpu_burn completed successfully"
+fi
+# ======= Field diagnostics ==================================================================
 if [ $RUN_FIELDIAG_L1 -eq 1 ] && [ -n "$FIELDIAG_BIN" ]; then
     log "Running fieldiag --level1 --no_bmc"
     if [ -n "$FIELDIAG_DIR" ]; then
@@ -207,7 +245,7 @@ if [ $RUN_FIELDIAG_L2 -eq 1 ] && [ -n "$FIELDIAG_BIN" ]; then
     fi
 fi
 
-# ======= CPU stress =======
+# ======= CPU stress ========================================================================
 if [ $RUN_CPU -eq 1 ]; then
     log "Running CPU stress-ng for ${CPU_STRESS_SECS}s"
     "$STRESS_NG_BIN" \
@@ -218,7 +256,7 @@ if [ $RUN_CPU -eq 1 ]; then
         2>&1 | tee "$log_dir/cpu_stress.log"
 fi
 
-# ======= MEM stress =======
+# ======= MEM stress =======================================================================
 if [ $RUN_MEM -eq 1 ]; then
     log "Running MEM stress-ng for ${MEM_STRESS_SECS}s"
     "$STRESS_NG_BIN" \
@@ -229,7 +267,7 @@ if [ $RUN_MEM -eq 1 ]; then
         2>&1 | tee "$log_dir/mem_stress.log"
 fi
 
-# ======= Disk test =======
+# ======= Disk test =========================================================================
 if [ $RUN_DISK -eq 1 ]; then
     log "Detecting NVMe devices..."
     NVME_DEVS=$(lsblk -d -n -o NAME,TYPE | awk '$2=="disk" && $1 ~ /^nvme/ {print "/dev/"$1}')
@@ -252,7 +290,7 @@ if [ $RUN_DISK -eq 1 ]; then
             --bs=4k               # I/O 块大小：4KB
                                   # 这是最常见的小块随机IO尺寸，用于测试IOPS能力
 			
-			--size=100%			  #覆盖整个盘空间,防止只测到一小部分 NAND
+            --size=100%		  #覆盖整个盘空间,防止只测到一小部分 NAND
 
             --ioengine=io_uring   # IO引擎：Linux 新一代异步IO接口 io_uring
                                   # 相比 libaio：
